@@ -1,6 +1,8 @@
 ##  Example app that draws a triangle. The triangle can be moved via touch or keyboard arrow keys.
 
-import glfm, opengl
+# import glfm, opengl
+import opengl
+import ./glfm
 
 
 type
@@ -160,10 +162,10 @@ proc compileShader*(`type`: GLenum; shaderString: string): GLuint =
 #   simpleVert = staticRead("simple.vert")
 #   simpleFrag = staticRead("simple.frag")
 
-proc readAssetFile*(filename: string): string =
-  let size = int glfmReadFileSize(filename)
-  result = newString(size)
-  discard glfmReadFileBuffer(filename, result)
+# proc readAssetFile*(filename: string): string =
+#   let size = int glfmReadFileSize(filename)
+#   result = newString(size)
+#   discard glfmReadFileBuffer(filename, result)
 
 proc onFrame*(display: ptr GLFMDisplay; frameTime: cdouble) {.exportc.} =
   #var app: ptr ExampleApp = cast[ptr ExampleApp](glfmGetUserData(display))
@@ -171,11 +173,34 @@ proc onFrame*(display: ptr GLFMDisplay; frameTime: cdouble) {.exportc.} =
   ##  Draw background
   glClearColor(0.0, 0.0, 0.0, 1.0)
   glClear(GL_COLOR_BUFFER_BIT)
+
+  const frags = """
+varying lowp vec3 v_color;
+
+void main() {
+    gl_FragColor = vec4(v_color, 1.0);
+}
+"""
+
+  const verts = """
+attribute highp vec3 a_position;
+attribute lowp vec3 a_color;
+
+varying lowp vec3 v_color;
+
+void main() {
+    gl_Position = vec4(a_position, 1.0);
+    v_color = a_color;
+}
+"""
+
   ##  Draw triangle
   if app.program == 0:
     echo "setup"
-    var vertShader: GLuint = compileShader(GL_VERTEX_SHADER, readAssetFile("simple.vert"))
-    var fragShader: GLuint = compileShader(GL_FRAGMENT_SHADER, readAssetFile("simple.frag"))
+    # var vertShader: GLuint = compileShader(GL_VERTEX_SHADER, readAssetFile("simple.vert"))
+    # var fragShader: GLuint = compileShader(GL_FRAGMENT_SHADER, readAssetFile("simple.frag"))
+    var vertShader: GLuint = compileShader(GL_VERTEX_SHADER, verts)
+    var fragShader: GLuint = compileShader(GL_FRAGMENT_SHADER, frags)
     if vertShader == 0 or fragShader == 0:
       glfmSetMainLoopFunc(display, nil)
       return
@@ -197,12 +222,14 @@ proc onFrame*(display: ptr GLFMDisplay; frameTime: cdouble) {.exportc.} =
   glEnableVertexAttribArray(0)
   glVertexAttribPointer(0, 3, cGL_FLOAT, GL_FALSE, stride, cast[pointer](0))
   glEnableVertexAttribArray(1)
-  glVertexAttribPointer(1, 3, cGL_FLOAT, GL_FALSE, stride, cast[pointer](sizeof(GLfloat) * 3))
+  glVertexAttribPointer(1, 3, cGL_FLOAT, GL_FALSE, stride, cast[pointer](sizeof(
+      GLfloat) * 3))
 
   var vertices = @[
     app.offsetX.float32 + 0.0.float32, app.offsetY.float32 + 0.5, 0.0, 1.0, 0.0, 0.0,
     app.offsetX.float32 - 0.5.float32, app.offsetY.float32 - 0.5, 0.0, 0.0, 1.0, 0.0,
-    app.offsetX.float32 + 0.5.float32, app.offsetY.float32 - 0.5, 0.0, 0.0, 0.0, 1.0] ##  x,y,z, r,g,b
+    app.offsetX.float32 + 0.5.float32, app.offsetY.float32 - 0.5, 0.0, 0.0, 0.0,
+    1.0] ##  x,y,z, r,g,b
 
   glBufferData(GL_ARRAY_BUFFER, vertices.len*4, addr(vertices[0]), GL_STATIC_DRAW)
   glDrawArrays(GL_TRIANGLES, 0, 3)
